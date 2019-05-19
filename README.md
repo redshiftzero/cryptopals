@@ -10,14 +10,8 @@ source .venv/bin/activate
 pip install -r dev-requirements.txt
 ```
 
-## Run tests
+## Run tests, type checker, style formatter
 
 ```
-pytest
-```
-
-## Run type checker
-
-```
-mypy cryptopals
+make
 ```
