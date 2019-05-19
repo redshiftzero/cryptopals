@@ -24,6 +24,16 @@ def xor_hex_strings(input_a: str, input_b: str) -> str:
     return bytes_to_hex(bytes_result)
 
 
+def hex_to_ascii(hex_str: str) -> str:
+    return bytes.fromhex(hex_str).decode("utf8")
+
+
 def xor(input_a: bytes, input_b: bytes) -> bytes:
+    result = [a ^ b for a, b in zip(input_a, input_b)]
+    return bytes(result)
+
+
+def single_char_xor(input_a: bytes, single_char: bytes) -> bytes:
+    input_b = single_char * len(input_a)
     result = [a ^ b for a, b in zip(input_a, input_b)]
     return bytes(result)
