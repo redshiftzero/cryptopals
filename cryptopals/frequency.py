@@ -1,47 +1,43 @@
 import string
+import os
 
-# https://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
-ENGLISH_FREQUENCIES = {
-    "a": 8.12,
-    "b": 1.49,
-    "c": 2.71,
-    "d": 4.32,
-    "e": 12.02,
-    "f": 2.30,
-    "g": 2.03,
-    "h": 5.92,
-    "i": 7.31,
-    "j": 0.10,
-    "k": 0.69,
-    "l": 3.98,
-    "m": 2.61,
-    "n": 6.95,
-    "o": 7.68,
-    "p": 1.82,
-    "q": 0.11,
-    "r": 6.02,
-    "s": 6.28,
-    "t": 9.10,
-    "u": 2.88,
-    "v": 1.11,
-    "w": 2.09,
-    "x": 0.17,
-    "y": 2.11,
-    "z": 0.07,
-}
+from typing import Dict
+
+
+RELATIVE_PATH_TO_ENGLISH_TEXT = "data/lotr.txt"
+TEST_CHARACTERS = (
+    string.ascii_lowercase + string.ascii_uppercase + " !@#$%^&*()" + "0123456789"
+)
+
+
+def compute_english_frequencies() -> Dict[str, float]:
+    path_to_english_text = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), RELATIVE_PATH_TO_ENGLISH_TEXT
+    )
+
+    with open(path_to_english_text, "rb") as f:
+        text = f.read().decode("utf8")
+
+    english_frequencies = {}
+    for char in TEST_CHARACTERS:
+        english_frequencies[char] = text.count(char) / len(text)
+
+    return english_frequencies
 
 
 def score_english_text(text: str) -> float:
-    # Using the chi sq statistic to measure how well the english char frequency
+    # Using a simple test statistic to measure how well the english char frequency
     # distribution fits to the observed character frequency distribution.
-    # http://www.stat.yale.edu/Courses/1997-98/101/chigf.htm
+    # metric = \Sigma_i^N \abs(o_i - e_i)
+    # tl;dr Low values = good fit, high values = bad fit
 
-    chi_sq = 0.0
+    metric = 0.0
+    english_frequencies = compute_english_frequencies()
 
     text = text.lower()
-    for letter in string.ascii_lowercase:
+    for letter in TEST_CHARACTERS:
         observed = text.count(letter) / len(text)  # occurences of letter in the text
-        expected = ENGLISH_FREQUENCIES[letter]
-        chi_sq += (observed - expected) ** 2 / (expected)
+        expected = english_frequencies[letter]
+        metric += abs(observed - expected)
 
-    return chi_sq
+    return metric
