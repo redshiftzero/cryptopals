@@ -1,4 +1,5 @@
 import base64
+import itertools
 
 
 def hex_to_base64(hex_str: str) -> str:
@@ -29,13 +30,8 @@ def hex_to_ascii(hex_str: str) -> str:
 
 
 def xor(input_a: bytes, input_b: bytes) -> bytes:
-    result = [a ^ b for a, b in zip(input_a, input_b)]
-    return bytes(result)
-
-
-def single_char_xor(input_a: bytes, single_char: bytes) -> bytes:
-    input_b = single_char * len(input_a)
-    result = [a ^ b for a, b in zip(input_a, input_b)]
+    input_b_generator = itertools.cycle(input_b)
+    result = [a ^ b for a, b in zip(input_a, input_b_generator)]
     return bytes(result)
 
 
