@@ -1,4 +1,4 @@
-from cryptopals.utils import hex_to_base64, xor_hex_strings
+from cryptopals.utils import hex_to_base64, xor_hex_strings, edit_distance
 
 
 def test_hex_str_to_base64_str():
@@ -22,3 +22,13 @@ def test_fixed_xor():
     actual_result = xor_hex_strings(input_a, input_b)
 
     assert actual_result == expected_result
+
+
+def test_edit_distance():
+    # For set 1, challenge 6
+    input_a = "this is a test"
+    input_b = "wokka wokka!!!"
+
+    result = edit_distance(input_a.encode("utf8"), input_b.encode("utf8"))
+
+    assert result == 37

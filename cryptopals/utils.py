@@ -37,3 +37,8 @@ def single_char_xor(input_a: bytes, single_char: bytes) -> bytes:
     input_b = single_char * len(input_a)
     result = [a ^ b for a, b in zip(input_a, input_b)]
     return bytes(result)
+
+
+def edit_distance(input_a: bytes, input_b: bytes) -> int:
+    differing_bits = [x ^ y for x, y in zip(input_a, input_b)]
+    return "".join([bin(x) for x in differing_bits]).count("1")
