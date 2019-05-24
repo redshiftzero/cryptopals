@@ -1,7 +1,7 @@
 import os
 
-from cryptopals.classic import break_single_char_xor
-from cryptopals.utils import single_char_xor, hex_to_bytes
+from cryptopals.classic import break_single_char_xor, repeating_key_xor
+from cryptopals.utils import single_char_xor, hex_to_bytes, bytes_to_hex
 
 
 def test_single_character_xor():
@@ -40,3 +40,23 @@ def test_detect_single_character_xor():
     plaintext = single_char_xor(xored_ciphertext, key)
 
     assert "Now that the party is jumping" in plaintext.decode("utf8")
+
+
+def test_repeating_key_xor():
+    # Set 1, challenge 5 (repeating key XOR)
+    plaintext = (
+        "Burning 'em, if you ain't quick and nimble\n" "I go crazy when I hear a cymbal"
+    )
+
+    key = "ICE"
+
+    expected_ciphertext = (
+        "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272"
+        "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+    )
+
+    actual_ciphertext = bytes_to_hex(
+        repeating_key_xor(plaintext.encode("utf8"), key.encode("utf8"))
+    )
+
+    assert expected_ciphertext == actual_ciphertext

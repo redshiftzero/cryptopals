@@ -23,3 +23,23 @@ def break_single_char_xor(ciphertext: bytes) -> Tuple[bytes, float]:
             best_key = key
 
     return best_key, best_metric
+
+
+def repeating_key_xor(plaintext: bytes, key: bytes) -> bytes:
+    def key_byte(key):
+        i = 0
+        while True:
+            i = i % len(key)
+            yield key[i]
+            i += 1
+
+    ciphertext_bytes_list = []
+    key_generator = key_byte(key)
+
+    while len(plaintext) > 0:
+        # XOR first byte of plaintext with next key byte
+        ciphertext_byte = plaintext[0] ^ next(key_generator)
+        ciphertext_bytes_list.append(ciphertext_byte)
+        plaintext = plaintext[1:]  # Strip off first byte since we've handled it
+
+    return bytes(ciphertext_bytes_list)
