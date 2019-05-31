@@ -1,7 +1,7 @@
 import os
 
-from cryptopals.classic import break_single_char_xor
-from cryptopals.utils import xor, hex_to_bytes, bytes_to_hex
+from cryptopals.classic import break_single_char_xor, break_repeating_key_xor
+from cryptopals.utils import xor, hex_to_bytes, bytes_to_hex, base64_to_bytes
 
 
 def test_single_character_xor():
@@ -62,6 +62,16 @@ def test_repeating_key_xor():
 
 def test_break_repeating_key_xor():
     # Set 1, challenge 6 (break repeating key XOR)
+    path_to_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/6.txt"
+    )
 
-    keysizes = range(2, 40 + 1)
-    pass
+    with open(path_to_data, "r") as f:
+        data = f.read().split("\n")
+        data = "".join(data)
+
+    ciphertext = base64_to_bytes(data)
+
+    key = break_repeating_key_xor(ciphertext)
+
+    assert key.decode("utf8") == "Terminator X: Bring the noise"

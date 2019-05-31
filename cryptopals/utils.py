@@ -16,6 +16,10 @@ def bytes_to_hex(bytes_input: bytes) -> str:
     return bytes_input.hex()
 
 
+def base64_to_bytes(str_input: str) -> bytes:
+    return base64.b64decode(str_input)
+
+
 def bytes_to_base64(bytes_input: bytes) -> str:
     return base64.b64encode(bytes_input).decode("utf-8")
 
