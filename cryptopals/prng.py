@@ -13,7 +13,7 @@ C = 0xEFC60000  # TGFSR(R) tempering bitmask
 L = 18  # bitmasks
 F = 1812433253
 
-BITMASK_32_BIT = 0x00FFFFFF
+BITMASK_32_BIT = 0b11111111111111111111111111111111
 
 
 class MersenneTwister(object):
@@ -22,22 +22,28 @@ class MersenneTwister(object):
     def __init__(self, seed) -> None:
         self.mt = [0] * N  # stores generator state
         self.index = N + 1
+
+        # bin(self.lower_mask) = 0b1111111111111111111111111111111
         self.lower_mask = (1 << R) - 1
+
+        # not upper_mask is BITMASK_32_BIT ^ self.lower_mask
+        # to flip all the 1's to 0's
         self.upper_mask = (
-            ~self.lower_mask & BITMASK_32_BIT
-        )  # lowest w bits of (not lower_mask)
+            self.lower_mask ^ BITMASK_32_BIT
+        ) & BITMASK_32_BIT  # lowest W bits of (not lower_mask)
+
         self.seed_mt(seed)
 
     def seed_mt(self, seed: int) -> None:
         """Initialize the generator from a seed"""
         self.index = N
         self.mt[0] = seed
-        for i in range(N - 1):
+        for i in range(1, N):
             self.mt[i] = (
                 F * (self.mt[i - 1] ^ (self.mt[i - 1] >> (W - 2))) + i
-            ) & BITMASK_32_BIT
+            ) & BITMASK_32_BIT  # lowest W bits of the quantity in parans
 
-    def extract_number(self):
+    def extract_number(self) -> int:
         """Extract a tempered value based on MT[index] calling twist() every n numbers"""
         if self.index >= N:
             if self.index > N:
@@ -51,12 +57,14 @@ class MersenneTwister(object):
         y = y ^ (y >> 1)
 
         self.index = self.index + 1
-        return y & BITMASK_32_BIT
+        return y & BITMASK_32_BIT  # lowest W bits of y
 
-    def twist(self):
+    def twist(self) -> None:
         """Generate the next n values from the series x_i"""
-        for i in range(N - 1):
-            x = (self.mt[i] & self.upper_mask) + (self.mt[i + 1 % N] & self.lower_mask)
+        for i in range(0, N):
+            x = (self.mt[i] & self.upper_mask) + (
+                self.mt[(i + 1) % N] & self.lower_mask
+            )
             xA = x >> 1
             if (x % 2) != 0:
                 xA = xA ^ A
