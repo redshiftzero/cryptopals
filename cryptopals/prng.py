@@ -53,8 +53,8 @@ class MersenneTwister(object):
         y = self.mt[self.index]
         y = y ^ ((y >> U) & D)
         y = y ^ ((y << S) & B)
-        y = y ^ ((y >> T) & C)
-        y = y ^ (y >> 1)
+        y = y ^ ((y << T) & C)
+        y = y ^ (y >> L)
 
         self.index = self.index + 1
         return y & BITMASK_32_BIT  # lowest W bits of y

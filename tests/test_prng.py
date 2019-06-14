@@ -1,10 +1,15 @@
 from cryptopals.prng import MersenneTwister
 
 
-def test_mersenne_twister():
-    mt_prng = MersenneTwister(123123132123)
+def test_mersenne_twister_cpp():
+    seed = 5489
+    mt_prng = MersenneTwister(seed)
 
-    first_number = mt_prng.extract_number()
-    second_number = mt_prng.extract_number()
+    # https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine
+    output_10000 = 4123659995
+    n_outputs = 10000
 
-    assert first_number != second_number
+    for rand in range(n_outputs):
+        random_number = mt_prng.extract_number()
+
+    assert random_number == output_10000
