@@ -70,3 +70,38 @@ class MersenneTwister(object):
                 xA = xA ^ A
             self.mt[i] = self.mt[(i + M) % N] ^ xA
         self.index = 0
+
+
+def mersenne_untemper(y: int) -> int:
+    """Takes an MT19937 output and transforms it back
+    into the corresponding element of the MT19937 state array."""
+
+    # Reverse of: y = y ^ (y << L)
+    y = y ^ (y >> L)
+
+    # Reverse of: y = y ^ ((y >> T) & C)
+    y = y ^ ((y << T) & C)
+
+    # Reverse of: y = y ^ ((y >> S) & B)
+    y = reverse_op_3(y)
+
+    # Reverse of: y = y ^ ((y << U) & D)
+    y = reverse_op_4(y)
+
+    return y
+
+
+def reverse_op_3(y: int) -> int:
+    x = y
+    for _ in range(W):  # W = word size (32 bit)
+        x = x << S
+        x = y ^ (x & B)
+    return x
+
+
+def reverse_op_4(y: int) -> int:
+    x = y
+    for _ in range(W):  # W = word size (32 bit)
+        x = x >> U
+        x = y ^ (x & D)
+    return x
