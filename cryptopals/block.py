@@ -1,3 +1,8 @@
+import math
+import os
+import random
+import string
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 
@@ -77,5 +82,43 @@ def aes_cbc_encrypt(
         aes_output = aes_ecb_encrypt(key, this_block)
 
         ciphertext = ciphertext + aes_output
+
+    return ciphertext
+
+
+def detect_ecb_use(ciphertext: bytes, block_size: int = 16) -> bool:
+    num_blocks = math.ceil(len(ciphertext) / block_size)
+
+    blocks = []
+    for i in range(num_blocks):
+        blocks.append(ciphertext[i * block_size : (i + 1) * block_size])
+
+    unique_blocks = set(blocks)
+    if len(unique_blocks) != len(blocks):
+        return True
+    else:
+        return False
+
+
+def gen_random_block(block_size: int = 16) -> bytes:
+    return os.urandom(block_size)
+
+
+def encryption_ecb_cbc_detection_oracle(key: bytes, plaintext: bytes) -> bytes:
+    # neither num_bytes_to_append nor pick_ecb_or_cbc needs a CSPRNG
+    num_bytes_to_append = random.randrange(5, 10)
+    pick_ecb_or_cbc = random.randrange(0, 2)
+
+    for _ in range(num_bytes_to_append):
+        # prepend a byte
+        plaintext = random.choice(string.printable).encode("utf-8") + plaintext
+        # append a byte
+        plaintext = plaintext + random.choice(string.printable).encode("utf-8")
+
+    if pick_ecb_or_cbc == 0:  # ECB
+        ciphertext = aes_ecb_encrypt(key, plaintext)
+    elif pick_ecb_or_cbc == 1:  # CBC
+        iv = gen_random_block()
+        ciphertext = aes_cbc_encrypt(key, plaintext, iv)
 
     return ciphertext

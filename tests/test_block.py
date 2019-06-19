@@ -1,4 +1,3 @@
-import math
 import os
 
 from cryptopals.block import (
@@ -6,6 +5,9 @@ from cryptopals.block import (
     aes_ecb_encrypt,
     aes_cbc_decrypt,
     aes_cbc_encrypt,
+    detect_ecb_use,
+    encryption_ecb_cbc_detection_oracle,
+    gen_random_block,
 )
 from cryptopals.utils import base64_to_bytes, hex_to_bytes
 
@@ -91,13 +93,38 @@ def test_aes_ecb_detection():
         # Look for repeated blocks
         bytes_ciphertext = hex_to_bytes(ciphertext)
 
-        num_blocks = math.ceil(len(bytes_ciphertext) / BLOCK_SIZE)
-        blocks = []
-        for i in range(num_blocks):
-            blocks.append(bytes_ciphertext[i * BLOCK_SIZE : (i + 1) * BLOCK_SIZE])
-
-        unique_blocks = set(blocks)
-        if len(unique_blocks) != len(blocks):
-            texts_with_repeated_blocks.append(ciphertext)
+        if detect_ecb_use(bytes_ciphertext):
+            texts_with_repeated_blocks.append(bytes_ciphertext)
 
     assert len(texts_with_repeated_blocks) == 1
+
+
+def test_ecb_cbc_detection_oracle():
+    # Set 2, challenge 11: Detect ECB or CBC
+
+    num_ecbs = 0
+    num_cbcs = 0
+    num_total_iterations = 100
+
+    path_to_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "cryptopals/data/lotr.txt"
+    )
+
+    with open(path_to_data, "r") as f:
+        plaintext = f.read().encode("utf-8")
+
+    for _ in range(num_total_iterations):
+        key = gen_random_block()
+        ciphertext = encryption_ecb_cbc_detection_oracle(key, plaintext)
+
+        if detect_ecb_use(ciphertext):
+            num_ecbs += 1
+        else:
+            num_cbcs += 1
+
+    cbc_rate = num_cbcs / num_total_iterations
+    ecb_rate = num_ecbs / num_total_iterations
+
+    # Expect 50 ECBs, 50 CBCs
+    assert cbc_rate > 0.40 and cbc_rate < 0.60
+    assert ecb_rate > 0.40 and ecb_rate < 0.60
