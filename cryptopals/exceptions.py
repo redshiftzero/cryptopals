@@ -1,0 +1,2 @@
+class BadPaddingValidation(Exception):
+    pass

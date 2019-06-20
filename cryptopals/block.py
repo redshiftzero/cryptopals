@@ -10,13 +10,16 @@ from cryptopals.padding import pkcs_7, remove_pkcs_7
 from cryptopals.utils import xor
 
 
-def aes_ecb_decrypt(key: bytes, ciphertext: bytes) -> bytes:
+def aes_ecb_decrypt(
+    key: bytes, ciphertext: bytes, remove_padding: bool = True
+) -> bytes:
     decryptor = Cipher(
         algorithms.AES(key), modes.ECB(), backend=default_backend()
     ).decryptor()
 
     plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-    plaintext = remove_pkcs_7(plaintext)
+    if remove_padding:
+        plaintext = remove_pkcs_7(plaintext)
     return plaintext
 
 
@@ -30,7 +33,11 @@ def aes_ecb_encrypt(key: bytes, plaintext: bytes, block_size: int = 16) -> bytes
 
 
 def aes_cbc_decrypt(
-    key: bytes, ciphertext: bytes, iv: bytes, block_size: int = 16
+    key: bytes,
+    ciphertext: bytes,
+    iv: bytes,
+    block_size: int = 16,
+    remove_padding: bool = True,
 ) -> bytes:
 
     if len(ciphertext) % block_size != 0:
@@ -51,10 +58,11 @@ def aes_cbc_decrypt(
         else:
             block_to_xor = blocks[block_num - 2]  # previous ciphertext block
 
-        aes_output = aes_ecb_decrypt(key, block)
+        aes_output = aes_ecb_decrypt(key, block, remove_padding=remove_padding)
         this_block = xor(aes_output, block_to_xor)
 
-        plaintext = remove_pkcs_7(plaintext)
+        if remove_padding:
+            plaintext = remove_pkcs_7(plaintext)
         plaintext = this_block + plaintext
 
     return plaintext

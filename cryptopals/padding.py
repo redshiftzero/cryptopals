@@ -1,3 +1,6 @@
+from cryptopals.exceptions import BadPaddingValidation
+
+
 def pkcs_7(plaintext: bytes, block_len: int) -> bytes:
     num_bytes_in_last_block = len(plaintext) % block_len
 
@@ -17,8 +20,7 @@ def remove_pkcs_7(plaintext: bytes) -> bytes:
     unpadded_plaintext = plaintext
     for _ in range(num_bytes_of_padding):
         if plaintext[-1:] != unpadded_plaintext[-1:]:
-            # not padding bytes
-            return plaintext
+            raise BadPaddingValidation
         unpadded_plaintext = unpadded_plaintext[:-1]
 
     return unpadded_plaintext
