@@ -5,9 +5,7 @@ from typing import Dict
 
 
 RELATIVE_PATH_TO_ENGLISH_TEXT = "data/lotr.txt"
-TEST_CHARACTERS = (
-    string.ascii_lowercase + string.ascii_uppercase + " !@#$%^&*():" + "0123456789"
-)
+TEST_CHARACTERS = string.printable
 
 
 def compute_english_frequencies() -> Dict[str, float]:

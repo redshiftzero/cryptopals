@@ -6,9 +6,12 @@ from cryptopals.block import (
     aes_cbc_decrypt,
     aes_cbc_encrypt,
     detect_ecb_use,
+    ecb_encrypt_append,
     encryption_ecb_cbc_detection_oracle,
     gen_random_block,
+    construct_ecb_attack_dict,
 )
+from cryptopals.frequency import TEST_CHARACTERS
 from cryptopals.utils import base64_to_bytes, hex_to_bytes
 
 
@@ -72,7 +75,7 @@ def test_aes_cbc_decrypt():
 
     iv = bytes([0]) * BLOCK_SIZE
 
-    plaintext = aes_cbc_decrypt(key, ciphertext, iv)
+    plaintext = aes_cbc_decrypt(key, ciphertext, iv, remove_padding=False)
 
     assert "Vanilla's on the mike, man I'm not lazy." in plaintext.decode("utf-8")
     assert "I'm back and I'm ringin' the bell" in plaintext.decode("utf-8")
@@ -128,3 +131,95 @@ def test_ecb_cbc_detection_oracle():
     # Expect 50 ECBs, 50 CBCs
     assert cbc_rate > 0.40 and cbc_rate < 0.60
     assert ecb_rate > 0.40 and ecb_rate < 0.60
+
+
+def test_byte_at_a_time_ecb_decryption():
+    # Set 2, challenge 12: Byte-at-a-time ECB decryption (Simple)
+
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/12.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        append_text_str = f.read()
+
+    append_bytes = base64_to_bytes(append_text_str)
+
+    # Making the input short and super easy for ECB detection
+    input_bytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".encode("utf-8")
+
+    # We won't actually use the key anywhere other than to pass it to the
+    # oracle function ecb_encrypt_append.
+    key = gen_random_block()
+
+    # Determine blocksize
+    previous_ciphertext_len = None
+    test_input = "A"
+    for blocksize in range(100):
+        test_input = "A" + test_input
+        test_ciphertext = ecb_encrypt_append(
+            key, test_input.encode("utf-8"), append_bytes
+        )
+
+        if (
+            previous_ciphertext_len
+            and len(test_ciphertext) - previous_ciphertext_len != 0
+        ):
+            blocksize = len(test_ciphertext) - previous_ciphertext_len
+            break
+
+        previous_ciphertext_len = len(test_ciphertext)
+
+    assert blocksize == BLOCK_SIZE  # Check we inferred blocksize correctly.
+
+    ciphertext = ecb_encrypt_append(key, b"", append_bytes)
+
+    # Now we make repeated calls (as described in problem statement) to
+    # pass inputs that are (blocksize - 1) in length.
+    reconstructed_str = ""
+
+    for index_of_target_block in range(1, len(ciphertext) // blocksize):
+
+        bytes_so_far_this_block = b""
+        for test_byte in range(blocksize):
+
+            if index_of_target_block == 1:
+                # If it's the first block, we control the prefix bytes.
+                attacker_controlled_bytes = "A" * (blocksize - test_byte - 1)
+
+                # Prefix is used for the dict calculation
+                prefix = (
+                    attacker_controlled_bytes.encode("utf-8") + bytes_so_far_this_block
+                )
+            else:
+                # But if it's the second block or later, we need to use the
+                # bytes we reconstructed from the previous block as the prefix.
+                previous_block_bytes = reconstructed_str[-1 * (blocksize - 1) :]
+
+                # The prefix is used for the dict calculation
+                prefix = previous_block_bytes.encode("utf-8")
+
+                # Attacker-controlled bytes here are just to make sure there is only a single
+                # unknown character in the target block.
+                attacker_controlled_bytes = "A" * (blocksize - test_byte - 1)
+
+            ciphertext = ecb_encrypt_append(
+                key, attacker_controlled_bytes.encode("utf-8"), append_bytes
+            )
+
+            cipher_dict = construct_ecb_attack_dict(key, prefix)
+
+            target_block_ciphertext = ciphertext[
+                (index_of_target_block - 1)
+                * blocksize : index_of_target_block
+                * blocksize
+            ]
+
+            last_char = cipher_dict[target_block_ciphertext]
+
+            reconstructed_str = reconstructed_str + last_char
+            bytes_so_far_this_block = bytes_so_far_this_block + last_char.encode(
+                "utf-8"
+            )
+
+    assert "With my rag-top down so my hair can blow" in reconstructed_str

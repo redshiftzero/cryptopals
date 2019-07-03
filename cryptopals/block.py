@@ -2,10 +2,12 @@ import math
 import os
 import random
 import string
+from typing import Dict
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 
+from cryptopals.frequency import TEST_CHARACTERS
 from cryptopals.padding import pkcs_7, remove_pkcs_7
 from cryptopals.utils import xor
 
@@ -130,3 +132,25 @@ def encryption_ecb_cbc_detection_oracle(key: bytes, plaintext: bytes) -> bytes:
         ciphertext = aes_cbc_encrypt(key, plaintext, iv)
 
     return ciphertext
+
+
+def ecb_encrypt_append(key: bytes, plaintext: bytes, append: bytes) -> bytes:
+    # append our bytes
+    plaintext = plaintext + append
+
+    return aes_ecb_encrypt(key, plaintext)
+
+
+def construct_ecb_attack_dict(
+    key: bytes, prefix: bytes, blocksize: int = 16
+) -> Dict[bytes, str]:
+    dict_to_construct = {}
+    for char in TEST_CHARACTERS:
+        plaintext = prefix + char.encode("utf-8")
+        ciphertext = aes_ecb_encrypt(key, plaintext)[0:blocksize]
+
+        # We want the ciphertexts to be the keys as we want to be able to look
+        # up test ciphertext block and find the unknown (last) character.
+        dict_to_construct[ciphertext] = char
+
+    return dict_to_construct
