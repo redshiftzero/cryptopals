@@ -1,3 +1,7 @@
+*/__pycache__/*
+
+.mypy_cache
+
 # Binaries for programs and plugins
 *.exe
 *.dll
