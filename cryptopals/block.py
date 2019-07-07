@@ -141,6 +141,14 @@ def ecb_encrypt_append(key: bytes, plaintext: bytes, append: bytes) -> bytes:
     return aes_ecb_encrypt(key, plaintext)
 
 
+def ecb_encrypt_prepend_and_append(
+    key: bytes, plaintext: bytes, append: bytes, prepend: bytes
+) -> bytes:
+    plaintext = prepend + plaintext + append
+
+    return aes_ecb_encrypt(key, plaintext)
+
+
 def construct_ecb_attack_dict(
     key: bytes, prefix: bytes, blocksize: int = 16
 ) -> Dict[bytes, str]:

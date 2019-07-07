@@ -1,4 +1,5 @@
 import os
+import random
 
 from cryptopals.block import (
     aes_ecb_decrypt,
@@ -7,6 +8,7 @@ from cryptopals.block import (
     aes_cbc_encrypt,
     detect_ecb_use,
     ecb_encrypt_append,
+    ecb_encrypt_prepend_and_append,
     encryption_ecb_cbc_detection_oracle,
     gen_random_block,
     construct_ecb_attack_dict,
@@ -205,6 +207,121 @@ def test_byte_at_a_time_ecb_decryption():
 
             ciphertext = ecb_encrypt_append(
                 key, attacker_controlled_bytes.encode("utf-8"), append_bytes
+            )
+
+            cipher_dict = construct_ecb_attack_dict(key, prefix)
+
+            target_block_ciphertext = ciphertext[
+                (index_of_target_block - 1)
+                * blocksize : index_of_target_block
+                * blocksize
+            ]
+
+            last_char = cipher_dict[target_block_ciphertext]
+
+            reconstructed_str = reconstructed_str + last_char
+            bytes_so_far_this_block = bytes_so_far_this_block + last_char.encode(
+                "utf-8"
+            )
+
+    assert "With my rag-top down so my hair can blow" in reconstructed_str
+
+
+def test_random_prefix_byte_at_a_time_ecb_decryption():
+    # Set 2, challenge 14: Byte-at-a-time ECB decryption (harder)
+
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/12.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        append_text_str = f.read()
+
+    append_bytes = base64_to_bytes(append_text_str)
+
+    # We won't actually use the key anywhere other than to pass it to the
+    # oracle function.
+    key = gen_random_block()
+
+    # Get random number of bytes. This we will prepend to the plaintext.
+    random_number_of_bytes = random.randint(1, 15)
+    prepend_bytes = os.urandom(random_number_of_bytes)
+
+    blocksize = 16
+
+    ciphertext = ecb_encrypt_prepend_and_append(key, b"", append_bytes, prepend_bytes)
+
+    test_str = "A" * blocksize
+    ciphertext_of_all_As = aes_ecb_encrypt(key, test_str.encode("utf-8"))[0:blocksize]
+
+    # We don't really know where to start in the ciphertext. Previously we started
+    # decrypting with the first ciphertext block, when we manipulated it to contain one target character.
+    # We need to first determine how much space the prefix bytes are taking up.
+    block_to_begin_at = None
+    number_of_characters_in_test_string = None
+    for num_of_test_characters in range(blocksize * 2 - 1, 1, -1):
+        test_str = "A" * num_of_test_characters
+
+        ciphertext = ecb_encrypt_prepend_and_append(
+            key, test_str.encode("utf-8"), append_bytes, prepend_bytes
+        )
+
+        for block_num in range(1, len(ciphertext) // blocksize):
+
+            if (
+                ciphertext_of_all_As
+                == ciphertext[(block_num - 1) * blocksize : block_num * blocksize]
+            ):
+                block_to_begin_at = block_num
+                number_of_characters_in_test_string = num_of_test_characters
+
+    number_of_characters_in_previous_block = (
+        number_of_characters_in_test_string - blocksize
+    )
+
+    # We add sufficient characters in the target block so that the unknown prefix
+    # bytes fill a block boundary. Then we start at that block boundary and decrypt
+    # as before.
+    reconstructed_str = ""
+
+    for index_of_target_block in range(block_to_begin_at, len(ciphertext) // blocksize):
+
+        bytes_so_far_this_block = b""
+        for test_byte in range(blocksize):
+
+            if index_of_target_block == block_to_begin_at:
+                # If it's the first block, we control the prefix bytes.
+                attacker_controlled_bytes = "A" * (blocksize - test_byte - 1)
+
+                # Prefix is used for the dict calculation
+                prefix = (
+                    attacker_controlled_bytes.encode("utf-8") + bytes_so_far_this_block
+                )
+
+                # Add our prefix to pad the unknown bytes to the block boundary.
+                attacker_controlled_bytes = (
+                    "A" * number_of_characters_in_test_string
+                    + attacker_controlled_bytes
+                )
+            else:
+                # But if it's the second block or later, we need to use the
+                # bytes we reconstructed from the previous block as the prefix.
+                previous_block_bytes = reconstructed_str[-1 * (blocksize - 1) :]
+
+                # The prefix is used for the dict calculation
+                prefix = previous_block_bytes.encode("utf-8")
+
+                # Add our prefix to pad the unknown bytes to the block boundary.
+                attacker_controlled_bytes = (
+                    "A" * number_of_characters_in_test_string
+                    + "A" * (blocksize - test_byte - 1)
+                )
+
+            ciphertext = ecb_encrypt_prepend_and_append(
+                key,
+                attacker_controlled_bytes.encode("utf-8"),
+                append_bytes,
+                prepend_bytes,
             )
 
             cipher_dict = construct_ecb_attack_dict(key, prefix)
