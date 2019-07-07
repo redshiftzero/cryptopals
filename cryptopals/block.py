@@ -25,13 +25,16 @@ def aes_ecb_decrypt(
     return plaintext
 
 
-def aes_ecb_encrypt(key: bytes, plaintext: bytes, block_size: int = 16) -> bytes:
-    padded_plaintext = pkcs_7(plaintext, block_size)
+def aes_ecb_encrypt(
+    key: bytes, plaintext: bytes, block_size: int = 16, padding: bool = True
+) -> bytes:
+    if padding:
+        plaintext = pkcs_7(plaintext, block_size)
 
     encryptor = Cipher(
         algorithms.AES(key), modes.ECB(), backend=default_backend()
     ).encryptor()
-    return encryptor.update(padded_plaintext) + encryptor.finalize()
+    return encryptor.update(plaintext) + encryptor.finalize()
 
 
 def aes_cbc_decrypt(
@@ -60,12 +63,13 @@ def aes_cbc_decrypt(
         else:
             block_to_xor = blocks[block_num - 2]  # previous ciphertext block
 
-        aes_output = aes_ecb_decrypt(key, block, remove_padding=remove_padding)
+        aes_output = aes_ecb_decrypt(key, block, remove_padding=False)
         this_block = xor(aes_output, block_to_xor)
 
-        if remove_padding:
-            plaintext = remove_pkcs_7(plaintext)
         plaintext = this_block + plaintext
+
+    if remove_padding:
+        plaintext = remove_pkcs_7(plaintext)
 
     return plaintext
 
@@ -73,6 +77,7 @@ def aes_cbc_decrypt(
 def aes_cbc_encrypt(
     key: bytes, plaintext: bytes, iv: bytes, block_size: int = 16
 ) -> bytes:
+
     plaintext = pkcs_7(plaintext, block_size)
 
     num_blocks = len(plaintext) // block_size
@@ -89,7 +94,7 @@ def aes_cbc_encrypt(
             block_to_xor = aes_output  # AES output from last block
 
         this_block = xor(block, block_to_xor)
-        aes_output = aes_ecb_encrypt(key, this_block)
+        aes_output = aes_ecb_encrypt(key, this_block, padding=False)
 
         ciphertext = ciphertext + aes_output
 
@@ -147,6 +152,14 @@ def ecb_encrypt_prepend_and_append(
     plaintext = prepend + plaintext + append
 
     return aes_ecb_encrypt(key, plaintext)
+
+
+def cbc_encrypt_prepend_and_append(
+    key: bytes, iv: bytes, plaintext: bytes, append: bytes, prepend: bytes
+) -> bytes:
+    plaintext = prepend + plaintext + append
+
+    return aes_cbc_encrypt(key, plaintext, iv)
 
 
 def construct_ecb_attack_dict(

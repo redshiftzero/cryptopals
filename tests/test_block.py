@@ -9,6 +9,7 @@ from cryptopals.block import (
     detect_ecb_use,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
+    cbc_encrypt_prepend_and_append,
     encryption_ecb_cbc_detection_oracle,
     gen_random_block,
     construct_ecb_attack_dict,
@@ -111,12 +112,7 @@ def test_ecb_cbc_detection_oracle():
     num_cbcs = 0
     num_total_iterations = 100
 
-    path_to_data = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "cryptopals/data/lotr.txt"
-    )
-
-    with open(path_to_data, "r") as f:
-        plaintext = f.read().encode("utf-8")
+    plaintext = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".encode("utf-8")
 
     for _ in range(num_total_iterations):
         key = gen_random_block()
@@ -340,3 +336,56 @@ def test_random_prefix_byte_at_a_time_ecb_decryption():
             )
 
     assert "With my rag-top down so my hair can blow" in reconstructed_str
+
+
+def test_cbc_bitflip_attack():
+    # Set 2, challenge 16 CBC Bitflipping
+    # Note: I did this assuming the prepended text was known by the attacker.
+
+    block_size = BLOCK_SIZE
+    key = gen_random_block()
+    iv = gen_random_block()
+
+    prepend = "comment1=cooking%20MCs;userdata="
+    append = ";comment2=%20like%20a%20pound%20of%20bacon"
+
+    # Make sure ; and = are quoted
+    # Selecting user controlled value exactly twice the target text
+    plaintext = "123456789012123456789012".replace(";", "").replace("=", "")
+    full_plaintext = prepend + plaintext + append
+    ciphertext = cbc_encrypt_prepend_and_append(
+        key,
+        iv,
+        plaintext.encode("utf-8"),
+        append.encode("utf-8"),
+        prepend.encode("utf-8"),
+    )
+
+    modified_ciphertext = b""
+    target_text = ";admin=true;"
+    edit_start_position = 0
+    edit_stop_position = len(target_text)
+
+    # Now tweak the bytes in the first ciphertext (comment field) such that the change
+    # is introduced in the second plaintext.
+    for ind, by in enumerate(ciphertext):
+        if ind in range(edit_start_position, edit_stop_position):
+            new_value = bytes(
+                [
+                    int.from_bytes(
+                        target_text[edit_start_position + ind].encode("utf-8"), "big"
+                    )
+                    ^ ciphertext[ind]
+                    ^ int.from_bytes(
+                        full_plaintext[ind + block_size].encode("utf-8"), "big"
+                    )
+                ]
+            )
+
+            modified_ciphertext = modified_ciphertext + new_value
+        else:
+            modified_ciphertext = modified_ciphertext + bytes([by])
+
+    decrypted_plaintext = aes_cbc_decrypt(key, modified_ciphertext, iv)
+
+    assert target_text.encode("utf-8") in decrypted_plaintext
