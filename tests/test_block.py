@@ -7,6 +7,7 @@ from cryptopals.block import (
     aes_cbc_decrypt,
     aes_cbc_encrypt,
     detect_ecb_use,
+    cbc_padding_oracle,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
     cbc_encrypt_prepend_and_append,
@@ -389,3 +390,45 @@ def test_cbc_bitflip_attack():
     decrypted_plaintext = aes_cbc_decrypt(key, modified_ciphertext, iv)
 
     assert target_text.encode("utf-8") in decrypted_plaintext
+
+
+def test_cbc_padding_oracle():
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/17.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        plaintexts = f.read().split("\n")
+
+    plaintext = random.choice(plaintexts)
+
+    block_size = 16
+    key = os.urandom(block_size)
+    iv = os.urandom(block_size)
+
+    plaintext_bytes = base64_to_bytes(plaintext)
+
+    ciphertext = aes_cbc_encrypt(key, plaintext_bytes, iv)
+
+    reconstructed_bytes = []
+    for possible_byte in TEST_CHARACTERS:
+        previous_block_ciphertext = os.urandom(block_size - 1) + possible_byte.encode(
+            "utf-8"
+        )
+        print(len(previous_block_ciphertext))
+
+        test_ciphertext = (
+            previous_block_ciphertext + ciphertext[block_size : 2 * block_size]
+        )
+        print(test_ciphertext)
+
+        valid_padding = cbc_padding_oracle(key, test_ciphertext, iv)
+        if valid_padding == True:
+            print("true!")
+            reconstructed_bytes.append(possible_byte)
+
+    import pdb
+
+    pdb.set_trace()
+
+    pass
