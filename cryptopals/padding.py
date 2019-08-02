@@ -16,6 +16,8 @@ def pkcs_7(plaintext: bytes, block_len: int) -> bytes:
 
 def remove_pkcs_7(plaintext: bytes) -> bytes:
     num_bytes_of_padding = int.from_bytes(plaintext[-1:], byteorder="little")
+    if num_bytes_of_padding == 0:
+        raise BadPaddingValidation
 
     unpadded_plaintext = plaintext
     for _ in range(num_bytes_of_padding):

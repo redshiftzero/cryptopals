@@ -7,6 +7,7 @@ from typing import Dict
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
 
+from cryptopals.exceptions import BadPaddingValidation
 from cryptopals.frequency import TEST_CHARACTERS
 from cryptopals.padding import pkcs_7, remove_pkcs_7
 from cryptopals.utils import xor
@@ -175,3 +176,11 @@ def construct_ecb_attack_dict(
         dict_to_construct[ciphertext] = char
 
     return dict_to_construct
+
+
+def cbc_padding_oracle(key: bytes, ciphertext: bytes, iv: bytes) -> bool:
+    try:
+        decrypted_plaintext = aes_cbc_decrypt(key, ciphertext, iv, remove_padding=True)
+        return True
+    except BadPaddingValidation:
+        return False

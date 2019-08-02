@@ -7,6 +7,7 @@ from cryptopals.block import (
     aes_cbc_decrypt,
     aes_cbc_encrypt,
     detect_ecb_use,
+    cbc_padding_oracle,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
     cbc_encrypt_prepend_and_append,
@@ -15,7 +16,8 @@ from cryptopals.block import (
     construct_ecb_attack_dict,
 )
 from cryptopals.frequency import TEST_CHARACTERS
-from cryptopals.utils import base64_to_bytes, hex_to_bytes
+from cryptopals.padding import pkcs_7, remove_pkcs_7
+from cryptopals.utils import base64_to_bytes, hex_to_bytes, xor
 
 
 BLOCK_SIZE = 16
