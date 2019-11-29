@@ -184,3 +184,54 @@ def cbc_padding_oracle(key: bytes, ciphertext: bytes, iv: bytes) -> bool:
         return True
     except BadPaddingValidation:
         return False
+
+
+class CounterMode(object):
+    def __init__(self, key: bytes, nonce: int, block_size: int):
+        self.key = key
+        self.nonce = bytes([nonce])
+        self.counter = 0
+        self.block_size = block_size
+        self.cipher = "AES"
+
+    def _generate_keystream_block(self) -> bytes:
+        num_bytes_for_nonce = 7  # to use same format as problem statement
+        counter = bytes([self.counter]).rjust(
+            self.block_size - num_bytes_for_nonce, b"\x00"
+        ) + self.nonce.ljust(num_bytes_for_nonce, b"\x00")
+        keystream = aes_ecb_encrypt(self.key, counter, self.block_size, False)
+        self.counter += 1
+        return keystream
+
+    def _xor_with_keystream(self, text: bytes) -> bytes:
+        result = []
+        keystream = b""
+        for text_byte in text:
+            if len(keystream) == 0:
+                keystream = self._generate_keystream_block()
+            result_byte = keystream[0] ^ text_byte
+            result.append(bytes([result_byte]))
+            keystream = keystream[1:]
+        return b"".join(result)
+
+    def decrypt(self, ciphertext: bytes) -> bytes:
+        return self._xor_with_keystream(ciphertext)
+
+    def encrypt(self, plaintext: bytes) -> bytes:
+        return self._xor_with_keystream(plaintext)
+
+
+def aes_ctr_decrypt(
+    key: bytes, ciphertext: bytes, nonce: int, block_size: int = 16
+) -> bytes:
+
+    count = CounterMode(key, nonce, block_size)
+    return count.decrypt(ciphertext)
+
+
+def aes_ctr_encrypt(
+    key: bytes, plaintext: bytes, nonce: int, block_size: int = 16
+) -> bytes:
+
+    count = CounterMode(key, nonce, block_size)
+    return count.encrypt(plaintext)

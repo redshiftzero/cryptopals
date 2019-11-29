@@ -6,6 +6,8 @@ from cryptopals.block import (
     aes_ecb_encrypt,
     aes_cbc_decrypt,
     aes_cbc_encrypt,
+    aes_ctr_decrypt,
+    aes_ctr_encrypt,
     detect_ecb_use,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
@@ -382,3 +384,28 @@ def test_cbc_bitflip_attack():
     decrypted_plaintext = aes_cbc_decrypt(key, modified_ciphertext, iv)
 
     assert target_text.encode("utf-8") in decrypted_plaintext
+
+
+def test_aes_ctr_decrypt():
+    # Set 3, challenge 18: Implement CTR, the stream cipher mode
+
+    ciphertext = base64_to_bytes(
+        "L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ=="
+    )
+    key = "YELLOW SUBMARINE".encode("utf-8")
+    nonce = 0
+
+    result = aes_ctr_decrypt(key, ciphertext, nonce, BLOCK_SIZE)
+
+    assert result == b"Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby "
+
+
+def test_aes_ctr_consistency():
+    test_text = b"pizza pie"
+    key = "YELLOW SUBMARINE".encode("utf-8")
+    nonce = 0
+
+    ciphertext = aes_ctr_encrypt(key, test_text, nonce, BLOCK_SIZE)
+    decrypted_plaintext = aes_ctr_decrypt(key, ciphertext, nonce, BLOCK_SIZE)
+
+    assert test_text == decrypted_plaintext
