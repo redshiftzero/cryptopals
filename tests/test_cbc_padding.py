@@ -30,15 +30,13 @@ def test_cbc_padding_oracle():
     reconstructed_bytes = cbc_solver.run(plaintext_bytes)
 
     # Since I'm pretending as if I didn't know the IV, I'm going to compare
-    # only the blocks that were *not* constructed by XORing with the IV. 
+    # only the blocks that were *not* constructed by XORing with the IV.
     # As an attacker I could guess e.g. that the IV was all 0s or some other
     # insecure default that might have been due to an insecure default in the
     # crypto library used by the developer.
     result_without_iv_based_block = "".join([chr(x) for x in reconstructed_bytes])
     plaintext_without_iv_based_block = plaintext_bytes[
-            2
-            * cbc_solver.block_size : (cbc_solver.num_blocks - 1)
-            * cbc_solver.block_size
-        ].decode("utf-8")
+        2 * cbc_solver.block_size : (cbc_solver.num_blocks - 1) * cbc_solver.block_size
+    ].decode("utf-8")
 
     assert plaintext_without_iv_based_block in result_without_iv_based_block

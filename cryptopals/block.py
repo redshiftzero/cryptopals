@@ -180,7 +180,7 @@ def construct_ecb_attack_dict(
 
 def cbc_padding_oracle(key: bytes, ciphertext: bytes, iv: bytes) -> bool:
     try:
-        decrypted_plaintext = aes_cbc_decrypt(key, ciphertext, iv, remove_padding=True)
+        aes_cbc_decrypt(key, ciphertext, iv, remove_padding=True)
         return True
     except BadPaddingValidation:
         return False

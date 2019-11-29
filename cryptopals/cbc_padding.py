@@ -1,6 +1,5 @@
 import math
-import os
-from typing import List, Optional
+from typing import List, Optional  # noqa: F401
 
 from cryptopals.block import cbc_padding_oracle
 
@@ -24,10 +23,8 @@ class Solver(object):
 
     def _decrypt_single_block(self, block_num):
         previous_block_ciphertext = self.ciphertext[
-                (block_num - 2)
-                * self.block_size : (block_num - 1)
-                * self.block_size
-            ]
+            (block_num - 2) * self.block_size : (block_num - 1) * self.block_size
+        ]
         this_block_ciphertext = self.ciphertext[
             (block_num - 1) * self.block_size : block_num * self.block_size
         ]
@@ -42,9 +39,7 @@ class Solver(object):
             for num in range(255):
                 num_of_prefix_bytes = byte_num - 1
 
-                test_block = b'0' * num_of_prefix_bytes + bytes(
-                    [num]
-                )
+                test_block = b"0" * num_of_prefix_bytes + bytes([num])
 
                 # Now add the byte that will be padding for the bytes we've already
                 # reconstructed.
@@ -86,7 +81,8 @@ class Solver(object):
                 if self.debug:  # Fail when we get a byte wrong before going any further
                     try:
                         expected_byte = self.plaintext_bytes[
-                                self.block_size * (block_num - 1) + byte_num - 1]
+                            self.block_size * (block_num - 1) + byte_num - 1
+                        ]
                         assert plaintext_byte == expected_byte
                     except AssertionError:
                         breakpoint()
@@ -98,9 +94,7 @@ class Solver(object):
                 block_cipher_outputs_prior_to_xor = [
                     block_cipher_output_byte
                 ] + block_cipher_outputs_prior_to_xor
-                self.reconstructed_bytes = [
-                    plaintext_byte
-                ] + self.reconstructed_bytes
+                self.reconstructed_bytes = [plaintext_byte] + self.reconstructed_bytes
 
                 break
 

@@ -7,7 +7,6 @@ from cryptopals.block import (
     aes_cbc_decrypt,
     aes_cbc_encrypt,
     detect_ecb_use,
-    cbc_padding_oracle,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
     cbc_encrypt_prepend_and_append,
@@ -15,9 +14,7 @@ from cryptopals.block import (
     gen_random_block,
     construct_ecb_attack_dict,
 )
-from cryptopals.frequency import TEST_CHARACTERS
-from cryptopals.padding import pkcs_7, remove_pkcs_7
-from cryptopals.utils import base64_to_bytes, hex_to_bytes, xor
+from cryptopals.utils import base64_to_bytes, hex_to_bytes
 
 
 BLOCK_SIZE = 16
@@ -145,9 +142,6 @@ def test_byte_at_a_time_ecb_decryption():
 
     append_bytes = base64_to_bytes(append_text_str)
 
-    # Making the input short and super easy for ECB detection
-    input_bytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".encode("utf-8")
-
     # We won't actually use the key anywhere other than to pass it to the
     # oracle function ecb_encrypt_append.
     key = gen_random_block()
@@ -199,8 +193,8 @@ def test_byte_at_a_time_ecb_decryption():
                 # The prefix is used for the dict calculation
                 prefix = previous_block_bytes.encode("utf-8")
 
-                # Attacker-controlled bytes here are just to make sure there is only a single
-                # unknown character in the target block.
+                # Attacker-controlled bytes here are just to make sure there is only
+                # a single unknown character in the target block.
                 attacker_controlled_bytes = "A" * (blocksize - test_byte - 1)
 
             ciphertext = ecb_encrypt_append(
@@ -253,7 +247,8 @@ def test_random_prefix_byte_at_a_time_ecb_decryption():
     ciphertext_of_all_As = aes_ecb_encrypt(key, test_str.encode("utf-8"))[0:blocksize]
 
     # We don't really know where to start in the ciphertext. Previously we started
-    # decrypting with the first ciphertext block, when we manipulated it to contain one target character.
+    # decrypting with the first ciphertext block, when we manipulated it to
+    # contain one target character.
     # We need to first determine how much space the prefix bytes are taking up.
     block_to_begin_at = None
     number_of_characters_in_test_string = None
@@ -272,10 +267,6 @@ def test_random_prefix_byte_at_a_time_ecb_decryption():
             ):
                 block_to_begin_at = block_num
                 number_of_characters_in_test_string = num_of_test_characters
-
-    number_of_characters_in_previous_block = (
-        number_of_characters_in_test_string - blocksize
-    )
 
     # We add sufficient characters in the target block so that the unknown prefix
     # bytes fill a block boundary. Then we start at that block boundary and decrypt

@@ -28,8 +28,12 @@ def test_removal_of_pkcs_7(test_input, expected):
 
 @pytest.mark.parametrize(
     "test_input",
-    [("ICE ICE BABY\x01\x02\x03\x04"), ("ICE ICE BABY\x05\x05\x05\x05"), ("YE\x03"),
-     ("ICE ICE BABY HI\x00")],
+    [
+        ("ICE ICE BABY\x01\x02\x03\x04"),
+        ("ICE ICE BABY\x05\x05\x05\x05"),
+        ("YE\x03"),
+        ("ICE ICE BABY HI\x00"),
+    ],
 )
 def test_removal_of_pkcs_7_raises_exception_invalid_padding(test_input):
     with pytest.raises(BadPaddingValidation):

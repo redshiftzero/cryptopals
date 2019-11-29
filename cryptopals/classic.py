@@ -1,9 +1,8 @@
-import string
 import math
 from typing import Tuple
 
 from cryptopals.frequency import score_english_text, TEST_CHARACTERS
-from cryptopals.utils import hex_to_ascii, xor, edit_distance
+from cryptopals.utils import xor, edit_distance
 
 
 def break_single_char_xor(ciphertext: bytes) -> Tuple[bytes, float]:
@@ -56,7 +55,8 @@ def break_repeating_key_xor(ciphertext: bytes, max_keysize: int = 40) -> bytes:
             best_edit_distance = normalized_edit_distance
             best_keysize = keysize
 
-    # At this point we know the keysize. Now we solve individual single char XOR problems.
+    # At this point we know the keysize.
+    # Now we solve individual single char XOR problems.
     num_fragments = math.floor(len(ciphertext) / best_keysize)
     key = b""
 

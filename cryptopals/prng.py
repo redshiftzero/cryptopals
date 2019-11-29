@@ -17,7 +17,8 @@ BITMASK_32_BIT = 0b11111111111111111111111111111111
 
 
 class MersenneTwister(object):
-    """This was done following the pseudocode at https://en.wikipedia.org/wiki/Mersenne_Twister"""
+    """This was done following the pseudocode at
+    https://en.wikipedia.org/wiki/Mersenne_Twister"""
 
     def __init__(self, seed) -> None:
         self.mt = [0] * N  # stores generator state
@@ -44,7 +45,8 @@ class MersenneTwister(object):
             ) & BITMASK_32_BIT  # lowest W bits of the quantity in parans
 
     def extract_number(self) -> int:
-        """Extract a tempered value based on MT[index] calling twist() every n numbers"""
+        """Extract a tempered value based on MT[index] calling
+        twist() every n numbers"""
         if self.index >= N:
             if self.index > N:
                 raise Exception("Generator was not seeded!")

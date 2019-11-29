@@ -2,3 +2,4 @@ mypy
 black
 cryptography
 pytest
+flake8

@@ -24,8 +24,9 @@ def compute_english_frequencies() -> Dict[str, float]:
 
 
 def score_english_text(text: str) -> float:
-    # Using a simple test statistic to measure how well the english char frequency
-    # distribution fits to the observed character frequency distribution.
+    # Using a simple test statistic to measure how well the english char
+    # frequency distribution fits to the observed character frequency
+    # distribution.
     # metric = \Sigma_i^N \abs(o_i - e_i)
     # tl;dr Low values = good fit, high values = bad fit
 

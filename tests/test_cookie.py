@@ -1,16 +1,6 @@
 import pytest
 
-from cryptopals.block import (
-    aes_ecb_decrypt,
-    aes_ecb_encrypt,
-    aes_cbc_decrypt,
-    aes_cbc_encrypt,
-    detect_ecb_use,
-    ecb_encrypt_append,
-    encryption_ecb_cbc_detection_oracle,
-    gen_random_block,
-    construct_ecb_attack_dict,
-)
+from cryptopals.block import aes_ecb_decrypt, aes_ecb_encrypt, gen_random_block
 from cryptopals.cookie import parse_structured_cookie, generate_profile_for
 
 
@@ -42,7 +32,7 @@ def test_ecb_cut_and_paste_cookie():
     key = gen_random_block(block_size)
 
     original_cookie = generate_profile_for("foo@bar.com")
-    encrypted_original_cookie = aes_ecb_encrypt(key, original_cookie.encode("utf-8"))
+    aes_ecb_encrypt(key, original_cookie.encode("utf-8"))
 
     # Get a block containing (we'll take block two from the ciphertext):
     # email=blahhhhhhh | admin            | &uid...
