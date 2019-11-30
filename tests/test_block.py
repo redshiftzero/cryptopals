@@ -1,3 +1,4 @@
+from collections import namedtuple
 import os
 import random
 
@@ -16,7 +17,8 @@ from cryptopals.block import (
     gen_random_block,
     construct_ecb_attack_dict,
 )
-from cryptopals.utils import base64_to_bytes, hex_to_bytes
+from cryptopals.frequency import top_n_english_words
+from cryptopals.utils import base64_to_bytes, hex_to_bytes, xor
 
 
 BLOCK_SIZE = 16
@@ -409,3 +411,154 @@ def test_aes_ctr_consistency():
     decrypted_plaintext = aes_ctr_decrypt(key, ciphertext, nonce, BLOCK_SIZE)
 
     assert test_text == decrypted_plaintext
+
+
+def test_break_fixed_nonce_ctf():
+    # Set 3, challenge 19: Break fixed-nonce CTR mode using substitutions
+
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/19.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        plaintexts_b64 = f.readlines()
+
+    plaintexts = [base64_to_bytes(x) for x in plaintexts_b64]
+    key = os.urandom(BLOCK_SIZE)
+    nonce = 0  # Fixed nonce
+
+    ciphertexts = [aes_ctr_encrypt(key, x, nonce, BLOCK_SIZE) for x in plaintexts]
+
+    # Each ciphertext has been encrypted against the same keystream:
+    # c_1 = p_1 xor k_1
+    # c_2 = p_2 xor k_2
+    # since k_1 = k_2 = k, we can xor ciphertexts to get:
+    # c_1 xor c_2 = p_1 xor k xor p_2 xor k = p_1 xor p_2
+
+    C1_xor_C2 = namedtuple("C1_xor_C2", "c1_index c2_index value")
+    xored = []
+    for ind_x, ciphertext_x in enumerate(ciphertexts):
+        for ind_y, ciphertext_y in enumerate(ciphertexts):
+            if ind_x != ind_y:
+                result = [bytes([x ^ y]) for x, y in zip(ciphertext_x, ciphertext_y)]
+                result_bytes = b"".join(result)
+                result_tuple = C1_xor_C2(ind_x, ind_y, result_bytes)
+                xored.append(result_tuple)
+
+    xored = list(set(xored))
+
+    reconstructed_keystream = b"\x00" * 32
+    keystream_byte_guesses = {}  # this will be a dict of lists
+
+    # Crib dragging:
+    # we have pairs of p_1 xor p_2
+    # if we xor with p_{test} = sp_1 = p, we'll get; p_1 xor p_{test} xor p_2 = p_2 only
+    # so let's try some trigrams and see if we get any english text, this will be p_2
+    common_ngrams = [
+        b"the ",
+        b" and ",
+        b"ing ",
+        b" her ",
+        b" his ",
+        b"this ",
+        b"And ",
+        b"This ",
+        b"The ",
+        b" in the ",
+        b" in ",
+        b" or ",
+        b"Or ",
+        b"What ",
+        b"To ",
+        b"When ",
+        b" when ",
+        b"All ",
+        b"of the ",
+        b" my ",
+        b"and th",
+        b"ation",
+        b"There ",
+        b" there ",
+        b" I ",
+        b" I had ",
+        b"Her ",
+        b"His ",
+        b" which ",
+        b"Which ",
+        b"Their ",
+        b" their ",
+        b" would ",
+        b"Would ",
+        b"end",
+        b"for ",
+        b"ate",
+        b"eth",
+        b"all",
+        b" said",
+        b" will",
+        b"I have ",
+    ]
+    # top_words = [x.encode('utf8') for x in top_n_english_words(10)]
+    top_words_with_space = [(x + " ").encode("utf8") for x in top_n_english_words(10)]
+    english_guesses = list(set(common_ngrams + top_words_with_space))
+
+    for pair in xored:
+        for test_ngram in english_guesses:
+            result = xor(pair.value, test_ngram)
+            for found_ngram in english_guesses:
+                if found_ngram != test_ngram and found_ngram in result:
+                    # if the area where we found a match in c1_xor_c2 = \x00, then skip
+                    # that's what we are doing with the found_ngram != test_ngram
+
+                    # Otherwise we found a few bytes of keystream
+                    starting_index = result.find(found_ngram)
+                    len_ngram = len(found_ngram)
+                    for index in range(len_ngram):
+                        # k = p xor c
+                        # but we don't know _which_ c to xor with
+                        # let's add both and then vote at the end
+                        ct_index = starting_index + index
+                        c1 = ciphertexts[pair.c1_index]
+                        c2 = ciphertexts[pair.c2_index]
+                        keystream_byte_guess_c1 = bytes(
+                            [found_ngram[index] ^ c1[ct_index]]
+                        )
+                        keystream_byte_guess_c2 = bytes(
+                            [found_ngram[index] ^ c2[ct_index]]
+                        )
+
+                        try:
+                            keystream_byte_guesses[ct_index].append(
+                                keystream_byte_guess_c1
+                            )
+                            keystream_byte_guesses[ct_index].append(
+                                keystream_byte_guess_c2
+                            )
+                        except KeyError:
+                            keystream_byte_guesses[ct_index] = [
+                                keystream_byte_guess_c1,
+                                keystream_byte_guess_c2,
+                            ]
+
+    for ct_index in keystream_byte_guesses.keys():
+        guesses = keystream_byte_guesses[ct_index]
+        winning_guess = max(set(guesses), key=guesses.count)
+        reconstructed_keystream = (
+            reconstructed_keystream[:ct_index]
+            + winning_guess
+            + reconstructed_keystream[ct_index + 1 :]
+        )
+
+    expected_keystream = aes_ctr_encrypt(key, b"\x00" * 32, nonce, BLOCK_SIZE)
+
+    # Let's call it a win when we get most of the bytes of the keystream
+    # (we can keep guessing but the next challenge will do the (better) statistical
+    # attack)
+    percent_correct = (
+        [x == y for x, y in zip(expected_keystream, reconstructed_keystream)].count(
+            True
+        )
+        / len(reconstructed_keystream)
+        * 100
+    )
+    assert percent_correct > 80.0
