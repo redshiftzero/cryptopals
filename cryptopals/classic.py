@@ -1,7 +1,10 @@
 import math
 from typing import Tuple
 
-from cryptopals.frequency import score_english_text, TEST_CHARACTERS
+from cryptopals.frequency import (
+    score_english_text,
+    TEST_CHARACTERS,
+)
 from cryptopals.utils import xor, edit_distance
 
 
@@ -18,9 +21,14 @@ def break_single_char_xor(ciphertext: bytes) -> Tuple[bytes, float]:
             metric = 1000.0
 
         if metric < best_metric:
+            print(
+                f"metric {metric!r} is better than the best {best_metric!r}, setting best key to {key!r}"
+            )
             best_metric = metric
             best_key = key
 
+    print("best_key", best_key)
+    print("best_metric", best_metric)
     return best_key, best_metric
 
 

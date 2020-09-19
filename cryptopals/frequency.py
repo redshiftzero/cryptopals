@@ -55,3 +55,19 @@ def score_english_text(text: str) -> float:
         metric += abs(observed - expected)
 
     return metric
+
+
+def score_english_text_bytes(text: bytes) -> float:
+
+    metric = 0.0
+    english_frequencies = compute_english_frequencies()
+
+    text = text.lower()
+    for letter in TEST_CHARACTERS:
+        observed = text.count(letter.encode("utf8")) / len(
+            text
+        )  # occurences of letter in the text
+        expected = english_frequencies[letter]
+        metric += abs(observed - expected) / (observed + 1)
+
+    return metric

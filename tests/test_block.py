@@ -9,6 +9,7 @@ from cryptopals.block import (
     aes_cbc_encrypt,
     aes_ctr_decrypt,
     aes_ctr_encrypt,
+    CounterMode,
     detect_ecb_use,
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
@@ -17,6 +18,7 @@ from cryptopals.block import (
     gen_random_block,
     construct_ecb_attack_dict,
 )
+from cryptopals.block_attacks import break_ctr_statistically
 from cryptopals.frequency import top_n_english_words
 from cryptopals.utils import base64_to_bytes, hex_to_bytes, xor
 
@@ -413,7 +415,7 @@ def test_aes_ctr_consistency():
     assert test_text == decrypted_plaintext
 
 
-def test_break_fixed_nonce_ctf():
+def test_break_fixed_nonce_ctr():
     # Set 3, challenge 19: Break fixed-nonce CTR mode using substitutions
 
     path_to_test_data = os.path.join(
@@ -551,9 +553,6 @@ def test_break_fixed_nonce_ctf():
 
     expected_keystream = aes_ctr_encrypt(key, b"\x00" * 32, nonce, BLOCK_SIZE)
 
-    # Let's call it a win when we get most of the bytes of the keystream
-    # (we can keep guessing but the next challenge will do the (better) statistical
-    # attack)
     percent_correct = (
         [x == y for x, y in zip(expected_keystream, reconstructed_keystream)].count(
             True
@@ -562,3 +561,44 @@ def test_break_fixed_nonce_ctf():
         * 100
     )
     assert percent_correct > 80.0
+
+
+def test_break_fixed_nonce_ctr_statistically():
+    # Set 3, challenge 20: Break fixed-nonce CTR mode statistically
+
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/20.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        plaintexts_b64 = f.readlines()
+
+    plaintexts = [base64_to_bytes(x) for x in plaintexts_b64]
+
+    key = b"aaaaaaaaaaaaaaaa"
+    nonce = 0  # Fixed nonce
+
+    ciphertexts = [aes_ctr_encrypt(key, x, nonce, BLOCK_SIZE) for x in plaintexts]
+
+    # Truncate to shortest ciphertext.
+    num_blocks = len(min(ciphertexts)) // BLOCK_SIZE
+    truncate = num_blocks * BLOCK_SIZE
+    truncated_ciphertexts = [x[:truncate] for x in ciphertexts]
+
+    # Generate keystream to compare the reconstructed answer with.
+    counter = CounterMode(key, nonce, BLOCK_SIZE)
+    keystream_blocks = [counter._generate_keystream_block() for x in range(num_blocks)]
+    true_keystream = b"".join(keystream_blocks)
+
+    assert truncate == len(true_keystream)
+
+    combined_ciphertext = b"".join(truncated_ciphertexts)
+
+    reconstructed_keystream = break_ctr_statistically(combined_ciphertext, truncate)
+
+    percent_correct = (
+        [x == y for x, y in zip(true_keystream, reconstructed_keystream)].count(True)
+        / len(reconstructed_keystream)
+        * 100
+    )
+    assert percent_correct > 70.0
