@@ -1,3 +1,5 @@
+from typing import List
+
 # MT19937 constants defined on https://en.wikipedia.org/wiki/Mersenne_Twister
 W = 32  # word size
 N = 624  # degree of recurrence
@@ -107,3 +109,50 @@ def reverse_op_4(y: int) -> int:
         x = x >> U
         x = y ^ (x & D)
     return x
+
+
+class MersenneStreamCipher(object):
+    def __init__(self, seed: int):
+        self.seed = seed
+        self._ks = MersenneTwister(seed)
+
+    def _generate_keystream(self) -> List[int]:
+        int_ks = self._ks.extract_number()
+        ks = []
+
+        # We break up this number into a sequence of 8-bit
+        # numbers.
+        for i in range(4):  # 4*8 = 32
+            ks.append(int_ks >> (i * 8) & 0xff)
+
+        ks.reverse()
+        return ks
+
+    def _xor_with_keystream(self, text: bytes) -> bytes:
+        result = []
+        keystream = self._generate_keystream()
+        for text_byte in text:
+            if len(keystream) == 0:
+                keystream = self._generate_keystream()
+
+            result_byte = keystream[0] ^ text_byte
+            result.append(bytes([result_byte]))
+            keystream = keystream[1:]
+
+        return b"".join(result)
+
+    def decrypt(self, ciphertext: bytes) -> bytes:
+        return self._xor_with_keystream(ciphertext)
+
+    def encrypt(self, plaintext: bytes) -> bytes:
+        return self._xor_with_keystream(plaintext)
+
+
+def mt_stream_decrypt(seed: int, ciphertext: bytes) -> bytes:
+    count = MersenneStreamCipher(seed)
+    return count.decrypt(ciphertext)
+
+
+def mt_stream_encrypt(seed: int, plaintext: bytes) -> bytes:
+    count = MersenneStreamCipher(seed)
+    return count.encrypt(plaintext)
