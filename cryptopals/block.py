@@ -220,6 +220,36 @@ class CounterMode(object):
     def encrypt(self, plaintext: bytes) -> bytes:
         return self._xor_with_keystream(plaintext)
 
+    def edit(self, ciphertext: bytes, offset: int, newtext: bytes) -> bytes:
+        """
+        Method required for set 4, challenge 25:
+        'Now, write the code that allows you to "seek" into the ciphertext,
+        decrypt, and re-encrypt with different plaintext.
+        Expose this as a function, like, "edit(ciphertext, key, offset, newtext)"'.
+        """
+
+        result = []
+        # We first loop through the prefix ciphertext so that the counter
+        # is in the right position.
+        prefix = ciphertext[:offset]
+        keystream = b""
+
+        for prefix_byte in prefix:
+            if len(keystream) == 0:
+                keystream = self._generate_keystream_block()
+
+            result.append(prefix_byte)
+            keystream = keystream[1:]
+
+        for text_byte in newtext:
+            if len(keystream) == 0:
+                keystream = self._generate_keystream_block()
+            result_byte = keystream[0] ^ text_byte
+            result.append(bytes([result_byte]))
+            keystream = keystream[1:]
+
+        return b"".join(result)
+
 
 def aes_ctr_decrypt(
     key: bytes, ciphertext: bytes, nonce: int, block_size: int = 16
@@ -235,3 +265,9 @@ def aes_ctr_encrypt(
 
     count = CounterMode(key, nonce, block_size)
     return count.encrypt(plaintext)
+
+
+def aes_ctr_edit(key: bytes, ciphertext: bytes, offset: int, newtext: bytes, nonce: int, block_size: int = 16
+) -> bytes:
+    count = CounterMode(key, nonce, block_size)
+    return count.edit(ciphertext, offset, newtext)

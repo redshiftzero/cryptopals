@@ -9,6 +9,7 @@ from cryptopals.block import (
     aes_cbc_encrypt,
     aes_ctr_decrypt,
     aes_ctr_encrypt,
+    aes_ctr_edit,
     CounterMode,
     detect_ecb_use,
     ecb_encrypt_append,
@@ -602,3 +603,34 @@ def test_break_fixed_nonce_ctr_statistically():
         * 100
     )
     assert percent_correct > 70.0
+
+
+def test_break_random_access_rw_ctr():
+    # Set 4, challenge 25: Break "random access read/write" AES CTR
+
+    path_to_test_data = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/20.txt"
+    )
+
+    with open(path_to_test_data, "r") as f:
+        plaintexts_b64 = f.readlines()
+
+    plaintexts = [base64_to_bytes(x) for x in plaintexts_b64]
+
+    key = os.urandom(BLOCK_SIZE)
+    nonce = 0
+
+    ciphertexts = [aes_ctr_encrypt(key, x, nonce, BLOCK_SIZE) for x in plaintexts]
+    edited_ciphertexts = []
+
+    for ciphertext in ciphertexts:
+        # Edit at position 0... why not!
+        # And we'll edit to have all null bytes as the "new" plaintext. Allowed by the API!
+        new_plaintext = b"\x00" * len(ciphertext)
+        edited_ciphertext = aes_ctr_edit(key, ciphertext, 0, new_plaintext, nonce)
+        edited_ciphertexts.append(edited_ciphertext)
+
+    # This means that the "edited_ciphertexts" are really just the keystream.
+    for ind, ciphertext in enumerate(ciphertexts):
+        reconstructed_plaintext = xor(edited_ciphertexts[ind], ciphertext)
+        assert reconstructed_plaintext == plaintexts[ind]
