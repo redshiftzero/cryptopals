@@ -15,6 +15,7 @@ from cryptopals.block import (
     ecb_encrypt_append,
     ecb_encrypt_prepend_and_append,
     cbc_encrypt_prepend_and_append,
+    ctr_encrypt_prepend_and_append,
     encryption_ecb_cbc_detection_oracle,
     gen_random_block,
     construct_ecb_attack_dict,
@@ -634,3 +635,53 @@ def test_break_random_access_rw_ctr():
     for ind, ciphertext in enumerate(ciphertexts):
         reconstructed_plaintext = xor(edited_ciphertexts[ind], ciphertext)
         assert reconstructed_plaintext == plaintexts[ind]
+
+
+def test_ctr_bitflip_attack():
+    # Set 4, challenge 26 CTR Bitflipping
+
+    key = gen_random_block()
+    nonce = 0
+
+    prepend = "comment1=cooking%20MCs;userdata="
+    append = ";comment2=%20like%20a%20pound%20of%20bacon"
+
+    # Make sure ; and = are quoted
+    # Selecting user controlled value exactly the target text
+    plaintext = "123456789012".replace(";", "").replace("=", "")
+    full_plaintext = prepend + plaintext + append
+    ciphertext = ctr_encrypt_prepend_and_append(
+        key,
+        nonce,
+        plaintext.encode("utf-8"),
+        append.encode("utf-8"),
+        prepend.encode("utf-8"),
+    )
+
+    modified_ciphertext = b""
+    target_text = ";admin=true;"
+
+    # We start editing at the beginning of user controlled plaintext
+    edit_start_position = len(prepend) + 1
+    edit_stop_position = edit_start_position + len(target_text)
+
+    # Now tweak the bytes in the ciphertext (comment field). Easier than CBC mode
+    # since we target the location exactly instead of the prior block.
+    for ind, by in enumerate(ciphertext):
+        if ind in range(edit_start_position, edit_stop_position):
+            new_value = bytes(
+                [
+                    int.from_bytes(target_text[0].encode("utf-8"), "big")
+                    ^ ciphertext[ind]
+                    ^ int.from_bytes(full_plaintext[ind].encode("utf-8"), "big")
+                ]
+            )
+            target_text = target_text[1:]
+
+            modified_ciphertext = modified_ciphertext + new_value
+        else:
+            modified_ciphertext = modified_ciphertext + bytes([by])
+
+    decrypted_plaintext = aes_ctr_decrypt(key, modified_ciphertext, nonce)
+
+    assert target_text.encode("utf-8") in decrypted_plaintext

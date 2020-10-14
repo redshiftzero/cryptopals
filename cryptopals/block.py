@@ -2,7 +2,7 @@ import math
 import os
 import random
 import string
-from typing import Dict
+from typing import Dict, List
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import algorithms, Cipher, modes
@@ -163,6 +163,14 @@ def cbc_encrypt_prepend_and_append(
     return aes_cbc_encrypt(key, plaintext, iv)
 
 
+def ctr_encrypt_prepend_and_append(
+    key: bytes, nonce: int, plaintext: bytes, append: bytes, prepend: bytes
+) -> bytes:
+    plaintext = prepend + plaintext + append
+
+    return aes_ctr_encrypt(key, plaintext, nonce)
+
+
 def construct_ecb_attack_dict(
     key: bytes, prefix: bytes, blocksize: int = 16
 ) -> Dict[bytes, str]:
@@ -228,7 +236,7 @@ class CounterMode(object):
         Expose this as a function, like, "edit(ciphertext, key, offset, newtext)"'.
         """
 
-        result = []
+        result = []  # type: List[bytes]
         # We first loop through the prefix ciphertext so that the counter
         # is in the right position.
         prefix = ciphertext[:offset]
@@ -238,7 +246,8 @@ class CounterMode(object):
             if len(keystream) == 0:
                 keystream = self._generate_keystream_block()
 
-            result.append(prefix_byte)
+            # below causing mypy error - false positive?
+            result.append(prefix_byte)  # type: ignore
             keystream = keystream[1:]
 
         for text_byte in newtext:
@@ -267,7 +276,13 @@ def aes_ctr_encrypt(
     return count.encrypt(plaintext)
 
 
-def aes_ctr_edit(key: bytes, ciphertext: bytes, offset: int, newtext: bytes, nonce: int, block_size: int = 16
+def aes_ctr_edit(
+    key: bytes,
+    ciphertext: bytes,
+    offset: int,
+    newtext: bytes,
+    nonce: int,
+    block_size: int = 16,
 ) -> bytes:
     count = CounterMode(key, nonce, block_size)
     return count.edit(ciphertext, offset, newtext)

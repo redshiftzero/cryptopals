@@ -123,7 +123,7 @@ class MersenneStreamCipher(object):
         # We break up this number into a sequence of 8-bit
         # numbers.
         for i in range(4):  # 4*8 = 32
-            ks.append(int_ks >> (i * 8) & 0xff)
+            ks.append(int_ks >> (i * 8) & 0xFF)
 
         ks.reverse()
         return ks

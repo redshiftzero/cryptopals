@@ -1,4 +1,3 @@
-import math
 import random
 import string
 import time
@@ -9,7 +8,6 @@ from cryptopals.prng import (
     mt_stream_encrypt,
     mt_stream_decrypt,
 )
-from cryptopals.utils import xor
 
 
 def test_mersenne_twister_cpp():
@@ -118,7 +116,9 @@ def test_crack_mersenne_stream_cipher():
     # 'A' characters) prefixed by a random number of random characters.
 
     random_num_char = random.randrange(2, 10)
-    prefix_chars = [random.choice(string.printable).encode('utf-8') for x in range(random_num_char)]
+    prefix_chars = [
+        random.choice(string.printable).encode("utf-8") for x in range(random_num_char)
+    ]
     known_plaintext = b"aaaaaaaaaaaaaa"
     test_plaintext = b"".join(prefix_chars) + known_plaintext
 
@@ -130,13 +130,16 @@ def test_crack_mersenne_stream_cipher():
     len_unknown_plaintext = len(test_plaintext) - len_known_plaintext
     # KPA attack model. 16-bit seed space, small enough to bruteforce.
 
-    for test_seed in range(2**16):
+    for test_seed in range(2 ** 16):
         if test_seed % 1000 == 0:
-            print(f'on {test_seed}')
+            print(f"on {test_seed}")
         prefix_bytes = b"a" * len_unknown_plaintext
         plaintext = prefix_bytes + known_plaintext
         ciphertext = mt_stream_encrypt(test_seed, plaintext)
-        if ciphertext[len_unknown_plaintext:] == test_ciphertext[len_unknown_plaintext:]:
+        if (
+            ciphertext[len_unknown_plaintext:]
+            == test_ciphertext[len_unknown_plaintext:]
+        ):
             assert seed == test_seed
             return
 
@@ -153,7 +156,7 @@ def test_detect_mersenne_password_reset_token():
     def gen_random_password_token(current_unix_timestamp: Optional[int] = None):
         if not current_unix_timestamp:
             current_unix_timestamp = int(time.time())
-            print(f'target seed: {current_unix_timestamp}')
+            print(f"target seed: {current_unix_timestamp}")
         mt_prng = MersenneTwister(current_unix_timestamp)
         return mt_prng.extract_number()
 
@@ -163,8 +166,8 @@ def test_detect_mersenne_password_reset_token():
         upper_seed_to_crack = int(time.time())
         # Assumes this is ran within 1 hr (=3600s) of token generation
         lower_seed_to_crack = upper_seed_to_crack - 3600
-        print(f'lower seed {lower_seed_to_crack}')
-        print(f'upper seed {upper_seed_to_crack}')
+        print(f"lower seed {lower_seed_to_crack}")
+        print(f"upper seed {upper_seed_to_crack}")
         for possible_seed in range(lower_seed_to_crack, upper_seed_to_crack + 1):
             test_token = gen_random_password_token(possible_seed)
             if test_token == token:
