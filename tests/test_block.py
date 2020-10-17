@@ -685,3 +685,51 @@ def test_ctr_bitflip_attack():
     decrypted_plaintext = aes_ctr_decrypt(key, modified_ciphertext, nonce)
 
     assert target_text.encode("utf-8") in decrypted_plaintext
+
+
+def test_cbc_recover_key_with_iv_eq_key():
+    # Set 4, challenge 27: Recover the key from CBC with IV=Key
+    key = gen_random_block()
+    plaintext = "comment1=cooking%20MCs;userdata=1234567890123456"
+
+    # Verify each byte of the plaintext for ASCII compliance
+    # (ie, look for high-ASCII values). Noncompliant messages
+    # should raise an exception or return an error that includes
+    # the decrypted plaintext.
+    def verify_plaintext(plaintext: bytes):
+        # Check for high-ASCII (bytes 127 or higher)
+        for b in plaintext:
+            assert b in range(32, 126)
+
+    verify_plaintext(plaintext.encode("utf8"))
+    ciphertext = aes_cbc_encrypt(key, plaintext.encode("utf8"), key)
+    block_1 = ciphertext[:BLOCK_SIZE]
+    block_4 = ciphertext[BLOCK_SIZE * 3 :]
+    all_zero = b"\x00" * BLOCK_SIZE
+
+    # Modify the message (you are now the attacker):
+    # C_1, C_2, C_3 -> C_1, 0, C_1
+    new_ciphertext = block_1 + all_zero + block_1 + block_4
+
+    # This will raise BadPaddingValidation on block_4
+    decrypted_plaintext = aes_cbc_decrypt(
+        key, new_ciphertext, key, remove_padding=False
+    )
+    try:
+        verify_plaintext(decrypted_plaintext)
+    except AssertionError:  # And this will happen as the attacker tampered with the ciphertext!
+        pass
+
+    # As the attacker, recovering the plaintext from the error, extract the key
+    # P'_1 XOR P'_3
+
+    p_1_prime = decrypted_plaintext[:BLOCK_SIZE]
+    p_3_prime = decrypted_plaintext[BLOCK_SIZE * 2 : BLOCK_SIZE * 3]
+    reconstructed_key = b""
+    for x, y in zip(p_1_prime, p_3_prime):
+        byte = bytes([x ^ y])
+        reconstructed_key += byte
+
+    # Check we reconstructed the key successfully
+    for x, y in zip(key, reconstructed_key):
+        assert x == y
